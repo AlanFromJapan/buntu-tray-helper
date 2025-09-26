@@ -205,3 +205,12 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+.env
+bin/
+lib/
+include/
+lib64
+pyvenv.cfg
+__pycache__/
+.pytest_cache/
