@@ -1,5 +1,6 @@
 import os
-from time import time
+import threading
+import time
 import gi
 gi.require_version('AppIndicator3', '0.1')
 from gi.repository import AppIndicator3, Gtk
@@ -13,7 +14,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 script_dir = os.path.dirname(os.path.abspath(__file__))
-icon_dir = os.path.join(script_dir, "..", "icon")
+icon_dir = os.path.join(script_dir, "icon")
 
 def quit_app(_):
     Gtk.main_quit()
@@ -48,6 +49,7 @@ def thread_icon():
         else:
             indicator.set_icon_full(os.path.join(icon_dir, "demo-ok.png"), "OK")
 
+
 #--------------------- Main Application ---------------------
 
 indicator = AppIndicator3.Indicator.new(
@@ -70,5 +72,8 @@ registered_plugins = load_plugins()
 
 menu.show_all()
 indicator.set_menu(menu)
+
+# Start the icon update thread as a daemon so it exits when the main program does
+threading.Thread(target=thread_icon, daemon=True).start()
 
 Gtk.main()

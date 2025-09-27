@@ -12,12 +12,12 @@ load_dotenv()
 
 __indicator = None
 __thread = None
-__config = None
+__health = {"status": "G", "failed": []}
+
 
 #The register function is required for the plugin system to recognize this file as a plugin.
 def register(menu, indicator):
     global __indicator
-    global __config
     __indicator = indicator
 
 
@@ -30,18 +30,19 @@ def register(menu, indicator):
 
 # This function is called by the main application to get the current status of the plugin (RAG).
 def get_status():
-    return "G"
+    global __health
+    return __health["status"]
 
 
 def do_snmp_health_check(_):
     print("Starting SNMP health check thread...")
-    # __thread = threading.Thread(target=background_task, daemon=True)
-    # __thread.start()
-
-    background_task(run_once=True)  # run once immediately for testing
+    __thread = threading.Thread(target=background_task, daemon=True)
+    __thread.start()
 
 
 async def snmp_get(host: str, oid: str, port: int = 161, community: str = "public", dyn_check:str= None):
+    health_result = {"status": "?", "failed": []}
+
     with SnmpDispatcher() as snmpDispatcher:
         iterator = await get_cmd(
             snmpDispatcher,
@@ -74,30 +75,44 @@ async def snmp_get(host: str, oid: str, port: int = 161, community: str = "publi
                         exec(check, {}, local_vars)
                         response = local_vars['response']
                         print(f"Dynamic check '{dyn_check}' evaluated to {response}")
+                        if not response:
+                            health_result["status"] = "R"
+                            health_result["failed"].append(f"Check failed: {dyn_check} with value {varBind[1].prettyPrint()}")
+                        else:
+                            if health_result["status"] != "R":
+                                health_result["status"] = "G"  # Only set to Green if not already Red
 
                     except ValueError:
                         print(f"Invalid dynamic check value: {dyn_check}")
-
+                        health_result["status"] = "R"
+                        health_result["failed"].append(f"Invalid check: {dyn_check}")
+    return health_result
 
 
 
 def background_task(run_once=False):
+    global __health
     while True:
         # Re-Load config each time in case it changes
         script_dir = os.path.dirname(os.path.abspath(__file__))
         config_dir = os.path.join(script_dir, "..", "config")
         with open(os.path.join(config_dir, 'snmp_health.json'), 'r') as f:
-            __config = json.load(f)
+            config = json.load(f)
 
         # SNMP Check Logic
-        ip = __config.get('server')  # Example IP from config
-        port = __config.get('port', 161)  # Default SNMP port is 161
-        for entry in __config.get('oids', []):
+        ip = config.get('server')  # Example IP from config
+        port = config.get('port', 161)  # Default SNMP port is 161
+        __health = {"status": "G", "failed": []} # Reset health status before checks
+        for entry in config.get('oids', []):
             oid = entry["oid"]
             dyn_check = entry.get("dyn_check", None)
 
             print(f"Checking SNMP OID {oid} on {ip}:{port}")
-            asyncio.run(snmp_get(ip, oid=oid, port=port, community='public', dyn_check=dyn_check))
+            result = asyncio.run(snmp_get(ip, oid=oid, port=port, community='public', dyn_check=dyn_check))
+
+            if result["status"] == "R":
+                __health["status"] = "R"
+                __health["failed"].extend(result["failed"])
 
         if run_once:
             break
