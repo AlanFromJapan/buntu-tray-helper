@@ -214,3 +214,4 @@ lib64
 pyvenv.cfg
 __pycache__/
 .pytest_cache/
+/config/snmp_health.json

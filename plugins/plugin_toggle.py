@@ -14,7 +14,12 @@ def register(menu, indicator):
     menu_item.connect("activate", toggle_icon)
     menu.append(menu_item)
 
-    
+
+# This function is called by the main application to get the current status of the plugin (RAG).
+def get_status():
+    return "G"
+
+
 def toggle_icon(_):
     global __state
 

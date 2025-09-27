@@ -1,4 +1,5 @@
 import os
+from time import time
 import gi
 gi.require_version('AppIndicator3', '0.1')
 from gi.repository import AppIndicator3, Gtk
@@ -11,23 +12,43 @@ from dotenv import load_dotenv
 #load environment variables from a .env file
 load_dotenv()
 
+script_dir = os.path.dirname(os.path.abspath(__file__))
+icon_dir = os.path.join(script_dir, "..", "icon")
+
 def quit_app(_):
     Gtk.main_quit()
 
-
+registered_plugins = []
 def load_plugins():
+    global script_dir
     plugins = []
-
-    script_dir = os.path.dirname(os.path.abspath(__file__))
 
     for finder, name, ispkg in pkgutil.iter_modules([os.path.join(script_dir, "plugins")]):
         print(f"Found plugin: {name}")
         module = importlib.import_module(os.path.join("plugins", name).replace(os.sep, "."))
         if hasattr(module, "register"):
-            plugins.append(module)
-            module.register(menu, indicator)  # call convention
+            try:
+                module.register(menu, indicator)  # call convention
+                plugins.append(module)
+            except Exception as e:
+                print(f"Error registering plugin {name}: {e}")
     return plugins
 
+# --------------------- Background Tasks ---------------------
+
+def thread_icon():
+    global icon_dir
+    while True:
+        time.sleep(1)  # wait 1 second before updating again
+        statuses = [plugin.get_status() for plugin in registered_plugins if hasattr(plugin, "get_status")]
+        if "R" in statuses:
+            indicator.set_icon_full(os.path.join(icon_dir, "demo-bad.png"), "Bad")
+        elif "A" in statuses:
+            indicator.set_icon_full(os.path.join(icon_dir, "demo-warn.png"), "Warn")
+        else:
+            indicator.set_icon_full(os.path.join(icon_dir, "demo-ok.png"), "OK")
+
+#--------------------- Main Application ---------------------
 
 indicator = AppIndicator3.Indicator.new(
     "buntu_tray_helper-indicator",
@@ -45,7 +66,7 @@ item_quit.connect("activate", quit_app)
 menu.append(item_quit)
 
 #get the plugins folder
-load_plugins()
+registered_plugins = load_plugins()
 
 menu.show_all()
 indicator.set_menu(menu)

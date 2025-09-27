@@ -22,6 +22,12 @@ def register(menu, indicator):
     menu.append(menu_item)
 
 
+# This function is called by the main application to get the current status of the plugin (RAG).
+def get_status():
+    #always return green as this is not a health check, and no way you can't send UDP packets (no reception check)
+    return "G"
+
+
 def send_wol(_):
     print("Starting WOL sending thread...")
     __thread = threading.Thread(target=background_task, daemon=True)
