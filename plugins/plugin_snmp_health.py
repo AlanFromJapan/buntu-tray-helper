@@ -12,20 +12,24 @@ load_dotenv()
 
 __indicator = None
 __thread = None
+__thread_kill = False
 __health = {"status": "G", "failed": []}
+__menu_item = None
+
 
 
 #The register function is required for the plugin system to recognize this file as a plugin.
 def register(menu, indicator):
     global __indicator
+    global __menu_item
     __indicator = indicator
 
 
     print("Plugin 'plugin_snmp_health' registered")
 
-    menu_item = Gtk.MenuItem(label="SNMP Health Check")
-    menu_item.connect("activate", do_snmp_health_check)
-    menu.append(menu_item)
+    __menu_item = Gtk.CheckMenuItem(label="SNMP Health Check")
+    __menu_item.connect("activate", do_snmp_health_check)
+    menu.append(__menu_item)
 
 
 # This function is called by the main application to get the current status of the plugin (RAG).
@@ -35,9 +39,23 @@ def get_status():
 
 
 def do_snmp_health_check(_):
-    print("Starting SNMP health check thread...")
-    __thread = threading.Thread(target=background_task, daemon=True)
-    __thread.start()
+    global __menu_item
+    global __thread
+    global __thread_kill
+
+    if __menu_item.get_active():
+        __menu_item.set_active(True) # Keep it checked to show it's active
+
+        print("Starting SNMP health check thread...")
+        __thread_kill = False
+        __thread = threading.Thread(target=background_task, daemon=True)
+        __thread.start()
+    else:
+        print("Stopping SNMP health check thread...")
+        __menu_item.set_active(False) # Keep it unchecked to show it's inactive
+        # No direct way to stop thread, but setting daemon=True means it will exit when main program exits
+        __thread_kill = True
+        # this will stop after the next sleep cycle in background_task, hoping user don't restart it before then
 
 
 async def snmp_get(host: str, oid: str, port: int = 161, community: str = "public", dyn_check:str= None):
@@ -92,7 +110,9 @@ async def snmp_get(host: str, oid: str, port: int = 161, community: str = "publi
 
 def background_task(run_once=False):
     global __health
-    while True:
+    global __thread_kill
+
+    while not __thread_kill:
         # Re-Load config each time in case it changes
         script_dir = os.path.dirname(os.path.abspath(__file__))
         config_dir = os.path.join(script_dir, "..", "config")
@@ -116,5 +136,5 @@ def background_task(run_once=False):
 
         if run_once:
             break
-        time.sleep(3 * 60)  # Wait for 3 minutes before checking again
-
+        time.sleep(int(config.get("frequency_in_sec", 180)))  # Wait for the configured frequency before checking again
+    print("SNMP health check thread exiting...")

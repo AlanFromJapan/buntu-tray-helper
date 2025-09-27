@@ -10,16 +10,19 @@ load_dotenv()
 
 __indicator = None
 __thread = None
+__thread_kill = False
+__menu_item = None
 
 #The register function is required for the plugin system to recognize this file as a plugin.
 def register(menu, indicator):
     global __indicator
+    global __menu_item
     __indicator = indicator
     print("Plugin 'plugin_wol' registered")
 
-    menu_item = Gtk.MenuItem(label="WOL NAS")
-    menu_item.connect("activate", send_wol)
-    menu.append(menu_item)
+    __menu_item = Gtk.CheckMenuItem(label="WOL NAS")
+    __menu_item.connect("activate", send_wol)
+    menu.append(__menu_item)
 
 
 # This function is called by the main application to get the current status of the plugin (RAG).
@@ -29,13 +32,26 @@ def get_status():
 
 
 def send_wol(_):
-    print("Starting WOL sending thread...")
-    __thread = threading.Thread(target=background_task, daemon=True)
-    __thread.start()
+    global __menu_item
+    global __thread
+    global __thread_kill
+    if __menu_item.get_active():
+        __menu_item.set_active(True) # Keep it checked to show it's active
+
+        print("Starting WOL sending thread...")
+        __thread_kill = False
+        __thread = threading.Thread(target=background_task, daemon=True)
+        __thread.start()
+    else:
+        print("Stopping WOL sending thread...")
+        __menu_item.set_active(False) # Keep it unchecked to show it's inactive
+        __thread_kill = True
+        # this will stop after the next sleep cycle in background_task, hoping user don't restart it before then
 
 
 def background_task():
-    while True:
+    global __thread_kill
+    while not __thread_kill:
         print("Sending WOL packet...")
 
         # Replace with your NAS MAC address
@@ -53,4 +69,4 @@ def background_task():
         print("WOL packet sent to", mac_address)
 
         time.sleep(3 * 60)  # Wait for 3 minutes before sending again
-
+    print("WOL sending thread exiting...")

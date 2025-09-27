@@ -67,6 +67,9 @@ item_quit = Gtk.MenuItem(label="Quit")
 item_quit.connect("activate", quit_app)
 menu.append(item_quit)
 
+#separator for the plugins
+menu.append(Gtk.SeparatorMenuItem())    
+
 #get the plugins folder
 registered_plugins = load_plugins()
 
