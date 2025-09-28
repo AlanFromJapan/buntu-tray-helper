@@ -17,7 +17,7 @@ def register(menu, indicator):
 
 # This function is called by the main application to get the current status of the plugin (RAG).
 def get_status():
-    return "G"
+    return {"status": "G", "failed": []}
 
 
 def toggle_icon(_):

@@ -28,7 +28,7 @@ def register(menu, indicator):
 # This function is called by the main application to get the current status of the plugin (RAG).
 def get_status():
     #always return green as this is not a health check, and no way you can't send UDP packets (no reception check)
-    return "G"
+    return {"status": "G", "failed": []}
 
 
 def send_wol(_):
