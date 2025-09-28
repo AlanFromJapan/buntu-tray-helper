@@ -119,22 +119,23 @@ def background_task(run_once=False):
         with open(os.path.join(config_dir, 'snmp_health.json'), 'r') as f:
             config = json.load(f)
 
-        # SNMP Check Logic
-        ip = config.get('server')  # Example IP from config
-        port = config.get('port', 161)  # Default SNMP port is 161
-        __health = {"status": "G", "failed": []} # Reset health status before checks
-        for entry in config.get('oids', []):
-            oid = entry["oid"]
-            dyn_check = entry.get("dyn_check", None)
+        for server in config.get('servers', []):
+            # SNMP Check Logic
+            ip = server.get('server')  # Example IP from config
+            port = server.get('port', 161)  # Default SNMP port is 161
+            __health = {"status": "G", "failed": []} # Reset health status before checks
+            for entry in server.get('oids', []):
+                oid = entry["oid"]
+                dyn_check = entry.get("dyn_check", None)
 
-            print(f"Checking SNMP OID {oid} on {ip}:{port}")
-            result = asyncio.run(snmp_get(ip, oid=oid, port=port, community='public', dyn_check=dyn_check))
+                print(f"Checking SNMP OID {oid} on {ip}:{port}")
+                result = asyncio.run(snmp_get(ip, oid=oid, port=port, community='public', dyn_check=dyn_check))
 
-            if result["status"] == "R":
-                __health["status"] = "R"
-                __health["failed"].extend(result["failed"])
+                if result["status"] == "R":
+                    __health["status"] = "R"
+                    __health["failed"].extend(result["failed"])
 
         if run_once:
             break
-        time.sleep(int(config.get("frequency_in_sec", 180)))  # Wait for the configured frequency before checking again
+        time.sleep(int(config.get("config", {}).get("frequency_in_sec", 180)))  # Wait for the configured frequency before checking again
     print("SNMP health check thread exiting...")
