@@ -5,6 +5,7 @@ import time
 import json
 import urllib.request
 import urllib.error
+import ssl
 from dotenv import load_dotenv
 
 #load environment variables from a .env file
@@ -66,7 +67,12 @@ def http_get(url: str, timeout: int = 30, expected_text: str = None, expected_st
         req = urllib.request.Request(url)
         req.add_header('User-Agent', 'buntu-tray-helper/1.0')
         
-        with urllib.request.urlopen(req, timeout=timeout) as response:
+        # Create SSL context that ignores certificate validation
+        ssl_context = ssl.create_default_context()
+        ssl_context.check_hostname = False
+        ssl_context.verify_mode = ssl.CERT_NONE
+        
+        with urllib.request.urlopen(req, timeout=timeout, context=ssl_context) as response:
             status_code = response.getcode()
             response_data = response.read().decode('utf-8', errors='ignore')
             
