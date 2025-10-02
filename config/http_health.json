@@ -1,0 +1,25 @@
+{
+    "config": {
+        "frequency_in_sec": 60
+    },
+    "urls": [
+        {
+            "url": "https://oshibi.cc/login",
+            "timeout": 5,
+            "expected_status": 200,
+            "expected_text": "ipcampy login"
+        },
+        {
+            "url": "https://electrogeek.cc/home.html",
+            "timeout": 5,
+            "expected_status": 200,
+            "expected_text": "Start of news header"
+        },
+        {
+            "url": "https://ayase32.cc:62873/login",
+            "timeout": 5,
+            "expected_status": 200,
+            "expected_text": "owncloud"
+        }
+    ]
+}
