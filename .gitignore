@@ -214,5 +214,6 @@ lib64
 pyvenv.cfg
 __pycache__/
 .pytest_cache/
-/config/snmp_health.json
-/config/http_health.json
+# Ignore all config files except sample.json files
+/config/*
+!/config/*.sample.json
