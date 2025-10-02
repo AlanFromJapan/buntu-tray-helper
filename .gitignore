@@ -215,3 +215,4 @@ pyvenv.cfg
 __pycache__/
 .pytest_cache/
 /config/snmp_health.json
+/config/http_health.json
