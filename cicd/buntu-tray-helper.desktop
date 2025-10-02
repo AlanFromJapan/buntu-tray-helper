@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=Buntu Tray Helper
+Exec=/home/alan/AppImage/buntu-tray-helper/bin/python /home/alan/AppImage/buntu-tray-helper/buntu-tray-helper.py
+Icon=/home/alan/AppImage/buntu-tray-helper/icon/appicon.png
+Comment=Helper application for system tray
+Categories=Utility;
+Terminal=false
+Hidden=false
+NoDisplay=false
+X-GNOME-Autostart-enabled=true
