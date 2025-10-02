@@ -71,15 +71,16 @@ def load_plugins():
 
 def thread_icon():
     global icon_dir
+    icon_prefix = os.getenv("ICON_PREFIX", "demo")
     while True:
         time.sleep(1)  # wait 1 second before updating again
         statuses = [plugin.get_status()["status"] for plugin in registered_plugins if hasattr(plugin, "get_status")]
         if "R" in statuses:
-            indicator.set_icon_full(os.path.join(icon_dir, "demo-bad.png"), "Bad")
+            indicator.set_icon_full(os.path.join(icon_dir, f"{icon_prefix}-bad.png"), "Bad")
         elif "A" in statuses:
-            indicator.set_icon_full(os.path.join(icon_dir, "demo-warn.png"), "Warn")
+            indicator.set_icon_full(os.path.join(icon_dir, f"{icon_prefix}-warn.png"), "Warn")
         else:
-            indicator.set_icon_full(os.path.join(icon_dir, "demo-ok.png"), "OK")
+            indicator.set_icon_full(os.path.join(icon_dir, f"{icon_prefix}-ok.png"), "OK")
 
 
 #--------------------- Main Application ---------------------
