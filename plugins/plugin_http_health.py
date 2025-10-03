@@ -7,6 +7,7 @@ import urllib.request
 import urllib.error
 import ssl
 from dotenv import load_dotenv
+import plugins.shared as shared
 
 #load environment variables from a .env file
 load_dotenv()
@@ -14,7 +15,7 @@ load_dotenv()
 __indicator = None
 __thread = None
 __thread_kill = False
-__health = {"status": "G", "failed": []}
+__health = shared.default_ok_status()
 __menu_item = None
 
 
@@ -34,7 +35,7 @@ def register(menu, indicator):
 # This function is called by the main application to get the current status of the plugin (RAG).
 def get_status():
     global __health
-    return __health if not __thread_kill else {"status": "G", "failed": []}  # If thread is killed, return Green status
+    return __health if not __thread_kill else shared.default_ok_status()  # If thread is killed, return Green status
 
 
 def do_http_health_check(_):
@@ -60,7 +61,7 @@ def http_get(url: str, timeout: int = 30, expected_text: str = None, expected_st
     Perform HTTP GET request and check response
     Returns: {"status": "G|R|?", "failed": []}
     """
-    health_result = {"status": "G", "failed": []}
+    health_result = shared.default_ok_status()
     
     try:
         # Create request with timeout
@@ -131,7 +132,7 @@ def background_task(run_once=False):
             time.sleep(60)
             continue
 
-        __health = {"status": "G", "failed": []} # Reset health status before checks
+        __health = shared.default_ok_status()  # Reset health status before checks
         
         for url_config in config.get('urls', []):
             url = url_config.get('url')

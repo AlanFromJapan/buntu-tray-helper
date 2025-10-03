@@ -1,5 +1,6 @@
 from gi.repository import Gtk
 import os
+import plugins.shared as shared
 
 __state = True
 __indicator = None
@@ -17,7 +18,7 @@ def register(menu, indicator):
 
 # This function is called by the main application to get the current status of the plugin (RAG).
 def get_status():
-    return {"status": "G", "failed": []}
+    return shared.default_ok_status()
 
 
 def toggle_icon(_):

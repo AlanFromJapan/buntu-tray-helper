@@ -4,6 +4,7 @@ import os
 from dotenv import load_dotenv
 import threading
 import time
+import plugins.shared as shared
 
 #load environment variables from a .env file
 load_dotenv()
@@ -28,7 +29,7 @@ def register(menu, indicator):
 # This function is called by the main application to get the current status of the plugin (RAG).
 def get_status():
     #always return green as this is not a health check, and no way you can't send UDP packets (no reception check)
-    return {"status": "G", "failed": []}
+    return shared.default_ok_status()
 
 
 def send_wol(_):

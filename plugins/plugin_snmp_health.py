@@ -6,6 +6,7 @@ import time
 import asyncio
 import json
 from pysnmp.hlapi.v1arch.asyncio import *
+import plugins.shared as shared
 
 #load environment variables from a .env file
 load_dotenv()
@@ -13,7 +14,7 @@ load_dotenv()
 __indicator = None
 __thread = None
 __thread_kill = False
-__health = {"status": "G", "failed": []}
+__health = shared.default_ok_status()
 __menu_item = None
 
 
@@ -35,7 +36,7 @@ def register(menu, indicator):
 # This function is called by the main application to get the current status of the plugin (RAG).
 def get_status():
     global __health
-    return __health if not __thread_kill else {"status": "G", "failed": []}  # If thread is killed, return Green status
+    return __health if not __thread_kill else shared.default_ok_status()  # If thread is killed, return Green status
 
 
 def do_snmp_health_check(_):
@@ -59,7 +60,7 @@ def do_snmp_health_check(_):
 
 
 async def snmp_get(host: str, oid: str, port: int = 161, community: str = "public", dyn_check:str= None):
-    health_result = {"status": "?", "failed": []}
+    health_result = shared.default_ok_status()
 
     with SnmpDispatcher() as snmpDispatcher:
         iterator = await get_cmd(
