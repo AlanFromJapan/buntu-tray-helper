@@ -8,9 +8,12 @@ from gi.repository import AppIndicator3, Gtk, Notify
 
 import importlib
 import pkgutil
+import json
 
 from dotenv import load_dotenv
 
+
+# --------------------- Constants ---------------------
 
 APP_ID = "buntu_tray_helper"
 
@@ -19,6 +22,8 @@ load_dotenv()
 
 script_dir = os.path.dirname(os.path.abspath(__file__))
 icon_dir = os.path.join(script_dir, "icon")
+
+# --------------------- Misc functions ---------------------
 
 def quit_app(_):
     Gtk.main_quit()
@@ -42,7 +47,7 @@ def get_status_text_from_status(status):
     else:
         return "OK"
 
-
+# Show a notification popup
 def show_notification(title, message, status=None):
     # Initialize Notify only once
     if not Notify.is_initted():
@@ -52,6 +57,7 @@ def show_notification(title, message, status=None):
     n.show()
 
 
+# Show the status of all plugins in a dialog
 def show_status(_):
     print("Status clicked")
 
@@ -79,7 +85,18 @@ def show_status(_):
 
         dialog.destroy()
 
+# Get the config json as a dictionary, create it if it doesn't exist
+def get_config_json():
+    global script_dir
+    config_dir = os.path.join(script_dir, "config")
+    config_file = os.path.join(config_dir, 'buntu-tray-helper.json')
+    if not os.path.exists(config_file):
+        with open(config_file, 'w') as f:
+            f.write('{}')  # create empty json file
+    with open(config_file, 'r') as f:
+        return json.load(f)
 
+# --------------------- Plugin Management ---------------------
 registered_plugins = []
 def load_plugins():
     global script_dir
@@ -89,7 +106,6 @@ def load_plugins():
         if not  name.startswith("plugin_"):
             continue
         
-        print(f"Found plugin: {name}")
         module = importlib.import_module(os.path.join("plugins", name).replace(os.sep, "."))
         if hasattr(module, "register"):
             try:
@@ -101,6 +117,7 @@ def load_plugins():
 
 # --------------------- Background Tasks ---------------------
 
+#Check the status of all plugins every second and update the icon accordingly
 def thread_icon():
     global icon_dir
     global APP_ID
@@ -122,6 +139,27 @@ def thread_icon():
         if new_status != current_status:
             current_status = new_status
             show_notification(APP_ID +" ~ Status Changed", f"Overall status changed to [{get_status_text_from_status(new_status)}]", new_status)
+
+
+#Start all the autostart plugins
+def thread_autostart_plugins():
+    global registered_plugins
+    time.sleep(5)  # wait 5 seconds before starting autostart plugins to allow the main app to settle
+    print("▶ Starting autostart plugins...")
+    
+    j = get_config_json()
+    autostart_plugins = j.get("autostart-plugins", [])
+
+    for plugin in registered_plugins:
+        pname = plugin.__name__[plugin.__name__.find(".")+1:]  # get the name after "plugin."
+
+        if hasattr(plugin, "autostart") and pname in autostart_plugins:
+            try:
+                print(f"Autostarting plugin {plugin.__name__}...")
+                plugin.autostart()  # call convention
+            except Exception as e:
+                print(f"Error autostarting plugin {plugin.__name__}: {e}")
+    print("▶ Starting autostart plugins... done.")
 
 
 #--------------------- Main Application ---------------------
@@ -168,6 +206,9 @@ def main():
 
     # Start the icon update thread as a daemon so it exits when the main program does
     threading.Thread(target=thread_icon, daemon=True).start()
+
+    # Start the autostart plugins thread as a daemon so it exits when the main program does
+    threading.Thread(target=thread_autostart_plugins, daemon=True).start()
 
     Gtk.main()
 
