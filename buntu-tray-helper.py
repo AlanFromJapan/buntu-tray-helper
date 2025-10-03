@@ -3,12 +3,15 @@ import threading
 import time
 import gi
 gi.require_version('AppIndicator3', '0.1')
-from gi.repository import AppIndicator3, Gtk
+from gi.repository import AppIndicator3, Gtk, Notify
 
 import importlib
 import pkgutil
 
 from dotenv import load_dotenv
+
+
+APP_ID = "buntu_tray_helper"
 
 #load environment variables from a .env file
 load_dotenv()
@@ -18,6 +21,34 @@ icon_dir = os.path.join(script_dir, "icon")
 
 def quit_app(_):
     Gtk.main_quit()
+
+
+def get_icon_path_from_status(status):
+    icon_prefix = os.getenv("ICON_PREFIX", "demo")
+    if status == "R":
+        return os.path.join(icon_dir, f"{icon_prefix}-bad.png")
+    elif status == "A":
+        return os.path.join(icon_dir, f"{icon_prefix}-warn.png")
+    else:
+        return os.path.join(icon_dir, f"{icon_prefix}-ok.png")
+
+
+def get_status_text_from_status(status):
+    if status == "R":
+        return "Bad"
+    elif status == "A":
+        return "Warn"
+    else:
+        return "OK"
+
+
+def show_notification(title, message, status=None):
+    # Initialize Notify only once
+    if not Notify.is_initted():
+        Notify.init(APP_ID)
+        
+    n = Notify.Notification.new(title, message, get_icon_path_from_status(status) if status else None)
+    n.show()
 
 
 def show_status(_):
@@ -71,22 +102,31 @@ def load_plugins():
 
 def thread_icon():
     global icon_dir
-    icon_prefix = os.getenv("ICON_PREFIX", "demo")
+    global APP_ID
+    current_status = "G"
     while True:
         time.sleep(1)  # wait 1 second before updating again
+        new_status = "G"
         statuses = [plugin.get_status()["status"] for plugin in registered_plugins if hasattr(plugin, "get_status")]
         if "R" in statuses:
-            indicator.set_icon_full(os.path.join(icon_dir, f"{icon_prefix}-bad.png"), "Bad")
+            indicator.set_icon_full(get_icon_path_from_status("R"), get_status_text_from_status("R"))
+            new_status = "R"
         elif "A" in statuses:
-            indicator.set_icon_full(os.path.join(icon_dir, f"{icon_prefix}-warn.png"), "Warn")
+            indicator.set_icon_full(get_icon_path_from_status("A"), get_status_text_from_status("A"))
+            new_status = "A"
         else:
-            indicator.set_icon_full(os.path.join(icon_dir, f"{icon_prefix}-ok.png"), "OK")
+            indicator.set_icon_full(get_icon_path_from_status("G"), get_status_text_from_status("G"))
+            new_status = "G"
+        
+        if new_status != current_status:
+            current_status = new_status
+            show_notification(APP_ID +" ~ Status Changed", f"Overall status changed to [{get_status_text_from_status(new_status)}]", new_status)
 
 
 #--------------------- Main Application ---------------------
 
 indicator = AppIndicator3.Indicator.new(
-    "buntu_tray_helper-indicator",
+    APP_ID,
     "system-run",  # an icon name from system theme, or absolute path to .png/.svg
     AppIndicator3.IndicatorCategory.APPLICATION_STATUS
 )
