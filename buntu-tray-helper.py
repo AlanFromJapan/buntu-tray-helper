@@ -84,7 +84,7 @@ def load_plugins():
     global script_dir
     plugins = []
 
-    for finder, name, ispkg in pkgutil.iter_modules([os.path.join(script_dir, "plugins")]):
+    for _, name, _ in pkgutil.iter_modules([os.path.join(script_dir, "plugins")]):
         if not  name.startswith("plugin_"):
             continue
         
@@ -124,42 +124,52 @@ def thread_icon():
 
 
 #--------------------- Main Application ---------------------
+indicator = None
+menu = None
+def main():
+    global indicator
+    global menu
+    global registered_plugins
 
-indicator = AppIndicator3.Indicator.new(
-    APP_ID,
-    "system-run",  # an icon name from system theme, or absolute path to .png/.svg
-    AppIndicator3.IndicatorCategory.APPLICATION_STATUS
-)
+    indicator = AppIndicator3.Indicator.new(
+        APP_ID,
+        "system-run",  # an icon name from system theme, or absolute path to .png/.svg
+        AppIndicator3.IndicatorCategory.APPLICATION_STATUS
+    )
 
-indicator.set_status(AppIndicator3.IndicatorStatus.ACTIVE)
+    indicator.set_status(AppIndicator3.IndicatorStatus.ACTIVE)
 
-# Build a simple menu
-menu = Gtk.Menu()
+    # Build a simple menu
+    menu = Gtk.Menu()
 
-#Quit menu on top
-item_quit = Gtk.MenuItem(label="Quit")
-item_quit.connect("activate", quit_app)
-menu.append(item_quit)
+    #Quit menu on top
+    item_quit = Gtk.MenuItem(label="Quit")
+    item_quit.connect("activate", quit_app)
+    menu.append(item_quit)
 
-#separator BEFORE the plugins
-menu.append(Gtk.SeparatorMenuItem())    
+    #separator BEFORE the plugins
+    menu.append(Gtk.SeparatorMenuItem())    
 
-#get the plugins folder
-registered_plugins = load_plugins()
+    #get the plugins folder
+    registered_plugins = load_plugins()
 
-#separator AFTER the plugins
-menu.append(Gtk.SeparatorMenuItem())    
+    #separator AFTER the plugins
+    menu.append(Gtk.SeparatorMenuItem())    
 
-#Show the status menu item
-item_show_status = Gtk.MenuItem(label="Show Status")
-item_show_status.connect("activate", show_status)
-menu.append(item_show_status)
+    #Show the status menu item
+    item_show_status = Gtk.MenuItem(label="Show Status")
+    item_show_status.connect("activate", show_status)
+    menu.append(item_show_status)
 
-#show the menu
-menu.show_all()
-indicator.set_menu(menu)
+    #show the menu
+    menu.show_all()
+    indicator.set_menu(menu)
 
-# Start the icon update thread as a daemon so it exits when the main program does
-threading.Thread(target=thread_icon, daemon=True).start()
+    # Start the icon update thread as a daemon so it exits when the main program does
+    threading.Thread(target=thread_icon, daemon=True).start()
 
-Gtk.main()
+    Gtk.main()
+
+
+if __name__ == "__main__":
+    main()
