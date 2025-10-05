@@ -5,6 +5,7 @@ import gi
 gi.require_version('AppIndicator3', '0.1')
 gi.require_version('Notify', '0.7')
 from gi.repository import AppIndicator3, Gtk, Notify
+from gi.repository import GLib
 
 import importlib
 import pkgutil
@@ -156,7 +157,7 @@ def thread_autostart_plugins():
         if hasattr(plugin, "autostart") and pname in autostart_plugins:
             try:
                 print(f"Autostarting plugin {plugin.__name__}...")
-                plugin.autostart()  # call convention
+                GLib.idle_add(plugin.autostart())  # call convention
             except Exception as e:
                 print(f"Error autostarting plugin {plugin.__name__}: {e}")
     print("▶ Starting autostart plugins... done.")

@@ -8,6 +8,7 @@ import json
 from pysnmp.hlapi.v1arch.asyncio import *
 import plugins.shared as shared
 
+
 #load environment variables from a .env file
 load_dotenv()
 
@@ -33,30 +34,45 @@ def register(menu, indicator):
     menu.append(__menu_item)
 
 
+#Will be called if the module is set to autostart in the config
+def autostart():
+    do_snmp_health_check(None, autostart=True)
+    
+
 # This function is called by the main application to get the current status of the plugin (RAG).
 def get_status():
     global __health
     return __health if not __thread_kill else shared.default_ok_status()  # If thread is killed, return Green status
 
 
-def do_snmp_health_check(_):
+__lock = threading.Lock()
+def do_snmp_health_check(_, autostart=False):
     global __menu_item
     global __thread
     global __thread_kill
+    global __lock
 
-    if __menu_item.get_active():
-        __menu_item.set_active(True) # Keep it checked to show it's active
+    with __lock:
+        #I don't know why the get_active() is True when clicked to deactivate, so invert the logic here
+        if __thread is None :
+            print("▶ Starting SNMP health check thread...")
+            __thread_kill = False
 
-        print("Starting SNMP health check thread...")
-        __thread_kill = False
-        __thread = threading.Thread(target=background_task, daemon=True)
-        __thread.start()
-    else:
-        print("Stopping SNMP health check thread...")
-        __menu_item.set_active(False) # Keep it unchecked to show it's inactive
-        # No direct way to stop thread, but setting daemon=True means it will exit when main program exits
-        __thread_kill = True
-        # this will stop after the next sleep cycle in background_task, hoping user don't restart it before then
+            __thread = threading.Thread(target=background_task, daemon=True)
+            __thread.start()
+
+            try:
+                __menu_item.set_active(True) # Keep it checked to show it's active
+            except Exception as e:
+                print(f"Error starting SNMP health check thread: {e}")
+
+            print("▶ Starting SNMP health check thread... done.")
+        else:
+            print("▶ Stopping SNMP health check thread...")
+            __menu_item.set_active(False) # Keep it unchecked to show it's inactive
+            # No direct way to stop thread, but setting daemon=True means it will exit when main program exits
+            __thread_kill = True
+            # this will stop after the next sleep cycle in background_task, hoping user don't restart it before then
 
 
 async def snmp_get(host: str, oid: str, port: int = 161, community: str = "public", dyn_check:str= None):
@@ -112,6 +128,7 @@ async def snmp_get(host: str, oid: str, port: int = 161, community: str = "publi
 def background_task(run_once=False):
     global __health
     global __thread_kill
+    global __thread
 
     while not __thread_kill:
         # Re-Load config each time in case it changes
@@ -120,11 +137,12 @@ def background_task(run_once=False):
         with open(os.path.join(config_dir, 'snmp_health.json'), 'r') as f:
             config = json.load(f)
 
+
+        new_health = shared.default_ok_status()  # Reset health status before checks
         for server in config.get('servers', []):
             # SNMP Check Logic
             ip = server.get('server')  # Example IP from config
             port = server.get('port', 161)  # Default SNMP port is 161
-            __health = {"status": "G", "failed": []} # Reset health status before checks
             for entry in server.get('oids', []):
                 oid = entry["oid"]
                 dyn_check = entry.get("dyn_check", None)
@@ -138,10 +156,15 @@ def background_task(run_once=False):
                     print(f"Error checking SNMP OID {oid} on {ip}:{port} - {e}")
 
                 if result is None or result["status"] in ["R", "?"]:
-                    __health["status"] = "R"
-                    __health["failed"].append(f"SNMP check failed for {ip} OID {oid}")
+                    new_health["status"] = "R"
+                    new_health["failed"].append(f"SNMP check failed for {ip} OID {oid}")
+            
+        __health = new_health
 
         if run_once:
             break
+        print("-"*40)
+
         time.sleep(int(config.get("config", {}).get("frequency_in_sec", 180)))  # Wait for the configured frequency before checking again
-    print("SNMP health check thread exiting...")
+    print("🪦 SNMP health check thread exiting.")
+    __thread = None
