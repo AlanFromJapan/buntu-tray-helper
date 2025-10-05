@@ -157,7 +157,8 @@ def thread_autostart_plugins():
         if hasattr(plugin, "autostart") and pname in autostart_plugins:
             try:
                 print(f"Autostarting plugin {plugin.__name__}...")
-                GLib.idle_add(plugin.autostart())  # call convention
+                #run it on different thread to avoid blocking the main thread
+                threading.Thread(target=lambda: GLib.idle_add(plugin.autostart()), daemon=True).start()
             except Exception as e:
                 print(f"Error autostarting plugin {plugin.__name__}: {e}")
     print("▶ Starting autostart plugins... done.")
