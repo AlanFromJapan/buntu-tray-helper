@@ -28,8 +28,14 @@ def register(menu, indicator):
     print("Plugin 'plugin_http_health' registered")
 
     __menu_item = Gtk.CheckMenuItem(label="HTTP Health Check")
+    __menu_item.set_active(True) #check by default
     __menu_item.connect("activate", do_http_health_check)
     menu.append(__menu_item)
+
+
+#Will be called if the module is set to autostart in the config
+def autostart():
+    do_http_health_check(None, autostart=True)
 
 
 # This function is called by the main application to get the current status of the plugin (RAG).
@@ -38,22 +44,26 @@ def get_status():
     return __health if not __thread_kill else shared.default_ok_status()  # If thread is killed, return Green status
 
 
-def do_http_health_check(_):
+__lock = threading.Lock()
+def do_http_health_check(_, autostart=False):
     global __menu_item
     global __thread
     global __thread_kill
+    global __lock
 
-    if __menu_item.get_active():
-        __menu_item.set_active(True) # Keep it checked to show it's active
+    with __lock:
+        if autostart or __menu_item.get_active():
+            print("Starting HTTP health check thread...")
+            __thread_kill = False
+            
+            __thread = threading.Thread(target=background_task, daemon=True)
+            __thread.start()
 
-        print("Starting HTTP health check thread...")
-        __thread_kill = False
-        __thread = threading.Thread(target=background_task, daemon=True)
-        __thread.start()
-    else:
-        print("Stopping HTTP health check thread...")
-        __menu_item.set_active(False) # Keep it unchecked to show it's inactive
-        __thread_kill = True
+            __menu_item.set_active(True) # Keep it checked to show it's active
+        else:
+            print("Stopping HTTP health check thread...")
+            __menu_item.set_active(False) # Keep it unchecked to show it's inactive
+            __thread_kill = True
 
 
 def http_get(url: str, timeout: int = 30, expected_text: str = None, expected_status: int = 200):

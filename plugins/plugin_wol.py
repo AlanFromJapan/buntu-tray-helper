@@ -26,28 +26,37 @@ def register(menu, indicator):
     menu.append(__menu_item)
 
 
+#Will be called if the module is set to autostart in the config
+def autostart():
+    send_wol(None, autostart=True)
+
+
 # This function is called by the main application to get the current status of the plugin (RAG).
 def get_status():
     #always return green as this is not a health check, and no way you can't send UDP packets (no reception check)
     return shared.default_ok_status()
 
 
-def send_wol(_):
+__lock = threading.Lock()
+def send_wol(_, autostart=False):
     global __menu_item
     global __thread
     global __thread_kill
-    if __menu_item.get_active():
-        __menu_item.set_active(True) # Keep it checked to show it's active
+    global __lock
+    
+    with __lock:
+        if autostart or __menu_item.get_active():
+            __menu_item.set_active(True) # Keep it checked to show it's active
 
-        print("Starting WOL sending thread...")
-        __thread_kill = False
-        __thread = threading.Thread(target=background_task, daemon=True)
-        __thread.start()
-    else:
-        print("Stopping WOL sending thread...")
-        __menu_item.set_active(False) # Keep it unchecked to show it's inactive
-        __thread_kill = True
-        # this will stop after the next sleep cycle in background_task, hoping user don't restart it before then
+            print("Starting WOL sending thread...")
+            __thread_kill = False
+            __thread = threading.Thread(target=background_task, daemon=True)
+            __thread.start()
+        else:
+            print("Stopping WOL sending thread...")
+            __menu_item.set_active(False) # Keep it unchecked to show it's inactive
+            __thread_kill = True
+            # this will stop after the next sleep cycle in background_task, hoping user don't restart it before then
 
 
 def background_task():
