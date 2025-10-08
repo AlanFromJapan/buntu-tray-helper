@@ -5,7 +5,7 @@ import gi
 gi.require_version('AppIndicator3', '0.1')
 gi.require_version('Notify', '0.7')
 from gi.repository import AppIndicator3, Gtk, Notify
-from gi.repository import GLib
+from gi.repository import GLib, Gdk
 
 import importlib
 import pkgutil
@@ -146,7 +146,7 @@ def thread_icon():
 def thread_autostart_plugins():
     global registered_plugins
     time.sleep(5)  # wait 5 seconds before starting autostart plugins to allow the main app to settle
-    print("▶ Starting autostart plugins...")
+    print("🏁 Starting autostart plugins...")
     
     j = get_config_json()
     autostart_plugins = j.get("autostart-plugins", [])
@@ -156,12 +156,13 @@ def thread_autostart_plugins():
 
         if hasattr(plugin, "autostart") and pname in autostart_plugins:
             try:
-                print(f"Autostarting plugin {plugin.__name__}...")
+                print(f"🏁 Autostarting plugin {plugin.__name__}...")
                 #run it on different thread to avoid blocking the main thread
-                threading.Thread(target=lambda: GLib.idle_add(plugin.autostart()), daemon=True).start()
+                threading.Thread(target=plugin.autostart(), daemon=True).start()
+                time.sleep(0.1)  # wait a bit before starting the next one
             except Exception as e:
                 print(f"Error autostarting plugin {plugin.__name__}: {e}")
-    print("▶ Starting autostart plugins... done.")
+    print("🏁 Starting autostart plugins... done.")
 
 
 #--------------------- Main Application ---------------------
@@ -216,4 +217,7 @@ def main():
 
 
 if __name__ == "__main__":
+    #Marked as deprecated in newer versions of PyGObject, but still needed for compatibility?
+    #GLib.threads_init()
+    #Gdk.threads_init()
     main()

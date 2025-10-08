@@ -7,6 +7,7 @@ import asyncio
 import json
 from pysnmp.hlapi.v1arch.asyncio import *
 import plugins.shared as shared
+from gi.repository import GLib
 
 
 #load environment variables from a .env file
@@ -30,6 +31,7 @@ def register(menu, indicator):
     print("Plugin 'plugin_snmp_health' registered")
 
     __menu_item = Gtk.CheckMenuItem(label="SNMP Health Check")
+    __menu_item.set_active(True) #check by default
     __menu_item.connect("activate", do_snmp_health_check)
     menu.append(__menu_item)
 
@@ -53,26 +55,35 @@ def do_snmp_health_check(_, autostart=False):
     global __lock
 
     with __lock:
+        print(f"▶ do_snmp_health_check called, autostart={autostart}, thread={__thread}, thread_kill={__thread_kill}")
         #I don't know why the get_active() is True when clicked to deactivate, so invert the logic here
-        if __thread is None :
+        if autostart or __thread is None :
             print("▶ Starting SNMP health check thread...")
             __thread_kill = False
 
             __thread = threading.Thread(target=background_task, daemon=True)
             __thread.start()
 
-            try:
-                __menu_item.set_active(True) # Keep it checked to show it's active
-            except Exception as e:
-                print(f"Error starting SNMP health check thread: {e}")
-
+            GLib.idle_add(toggle_menu_item_state, True, priority=GLib.PRIORITY_DEFAULT_IDLE)
             print("▶ Starting SNMP health check thread... done.")
         else:
             print("▶ Stopping SNMP health check thread...")
-            __menu_item.set_active(False) # Keep it unchecked to show it's inactive
             # No direct way to stop thread, but setting daemon=True means it will exit when main program exits
             __thread_kill = True
+
+            GLib.idle_add(toggle_menu_item_state, False, priority=GLib.PRIORITY_DEFAULT_IDLE)
             # this will stop after the next sleep cycle in background_task, hoping user don't restart it before then
+
+        #Toggle the check state to reflect the new state
+        print("👉 Toggling SNMP health check menu item state done." + str(__menu_item.get_active()))
+
+
+def toggle_menu_item_state(state: bool):
+    global __menu_item
+    if __menu_item:
+        __menu_item.set_active(state)
+    #run once for Gtk idle loop
+    return False
 
 
 async def snmp_get(host: str, oid: str, port: int = 161, community: str = "public", dyn_check:str= None):

@@ -28,6 +28,7 @@ def register(menu, indicator):
     print("Plugin 'plugin_http_health' registered")
 
     __menu_item = Gtk.CheckMenuItem(label="HTTP Health Check")
+    __menu_item.set_active(True) #check by default
     __menu_item.connect("activate", do_http_health_check)
     menu.append(__menu_item)
 
