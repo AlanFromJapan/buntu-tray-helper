@@ -4,7 +4,7 @@
 mkdir -p ~/AppImage/buntu-tray-helper
 
 # Copy current code to that folder
-rsync -av --exclude='.git' --exclude='cicd' ~/Git/buntu-tray-helper/ ~/AppImage/buntu-tray-helper/
+rsync -av --exclude='.git' --exclude='cicd' --exclude='config' ~/Git/buntu-tray-helper/ ~/AppImage/buntu-tray-helper/
 
 #make it autostart
 mkdir -p ~/.config/autostart
