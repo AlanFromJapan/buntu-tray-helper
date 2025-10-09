@@ -6,11 +6,8 @@ import json
 import urllib.request
 import urllib.error
 import ssl
-from dotenv import load_dotenv
 import plugins.shared as shared
 
-#load environment variables from a .env file
-load_dotenv()
 
 __indicator = None
 __thread = None
@@ -119,28 +116,7 @@ def background_task(run_once=False):
     global __thread_kill
 
     while not __thread_kill:
-        # Re-Load config each time in case it changes
-        script_dir = os.path.dirname(os.path.abspath(__file__))
-        config_dir = os.path.join(script_dir, "..", "config")
-        config_file = os.path.join(config_dir, 'http_health.json')
-        
-        # Check if config file exists
-        if not os.path.exists(config_file):
-            print(f"Config file {config_file} not found, skipping HTTP health checks")
-            if run_once:
-                break
-            time.sleep(60)  # Wait 1 minute before checking again
-            continue
-            
-        try:
-            with open(config_file, 'r') as f:
-                config = json.load(f)
-        except Exception as e:
-            print(f"Error reading config file {config_file}: {e}")
-            if run_once:
-                break
-            time.sleep(60)
-            continue
+        config = shared.get_plugin_config('http_health.json')
 
         __health = shared.default_ok_status()  # Reset health status before checks
         
@@ -166,4 +142,4 @@ def background_task(run_once=False):
         frequency = config.get("config", {}).get("frequency_in_sec", 300)  # Default 5 minutes
         time.sleep(frequency)
         
-    print("HTTP health check thread exiting...")
+    print("🪦 HTTP health check thread exiting...")

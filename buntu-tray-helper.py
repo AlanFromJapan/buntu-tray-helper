@@ -5,25 +5,22 @@ import gi
 gi.require_version('AppIndicator3', '0.1')
 gi.require_version('Notify', '0.7')
 from gi.repository import AppIndicator3, Gtk, Notify
-from gi.repository import GLib, Gdk
+#from gi.repository import GLib, Gdk
 
 import importlib
 import pkgutil
 import json
 
-from dotenv import load_dotenv
 
 
 # --------------------- Constants ---------------------
 
 APP_ID = "buntu_tray_helper"
 
-#load environment variables from a .env file
-load_dotenv()
-
 script_dir = os.path.dirname(os.path.abspath(__file__))
 icon_dir = os.path.join(script_dir, "icon")
 
+icon_prefix = None  # will be set later
 # --------------------- Misc functions ---------------------
 
 def quit_app(_):
@@ -31,7 +28,13 @@ def quit_app(_):
 
 
 def get_icon_path_from_status(status):
-    icon_prefix = os.getenv("ICON_PREFIX", "demo")
+    global icon_prefix
+    global icon_dir
+
+    if icon_prefix is None:
+        #load just once
+        icon_prefix = get_config_json().get("icon-prefix", "demo")
+
     if status == "R":
         return os.path.join(icon_dir, f"{icon_prefix}-bad.png")
     elif status == "A":

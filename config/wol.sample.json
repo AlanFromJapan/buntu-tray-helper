@@ -1,0 +1,11 @@
+{
+    "settings": {
+        "frequency_sec": "180"
+    },
+    "devices": [
+        {
+            "name": "My Computer",
+            "mac": "00:11:22:33:44:55"
+        }
+    ]
+}

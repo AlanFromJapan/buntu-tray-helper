@@ -1,6 +1,5 @@
 from gi.repository import Gtk
 import os
-from dotenv import load_dotenv
 import threading
 import time
 import asyncio
@@ -10,8 +9,6 @@ import plugins.shared as shared
 from gi.repository import GLib
 
 
-#load environment variables from a .env file
-load_dotenv()
 
 __indicator = None
 __thread = None
@@ -142,12 +139,7 @@ def background_task(run_once=False):
     global __thread
 
     while not __thread_kill:
-        # Re-Load config each time in case it changes
-        script_dir = os.path.dirname(os.path.abspath(__file__))
-        config_dir = os.path.join(script_dir, "..", "config")
-        with open(os.path.join(config_dir, 'snmp_health.json'), 'r') as f:
-            config = json.load(f)
-
+        config = shared.get_plugin_config('snmp_health.json')
 
         new_health = shared.default_ok_status()  # Reset health status before checks
         for server in config.get('servers', []):
@@ -179,3 +171,5 @@ def background_task(run_once=False):
         time.sleep(int(config.get("config", {}).get("frequency_in_sec", 180)))  # Wait for the configured frequency before checking again
     print("🪦 SNMP health check thread exiting.")
     __thread = None
+
+
