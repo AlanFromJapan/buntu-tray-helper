@@ -149,12 +149,10 @@ def thread_autostart_plugins():
     print("🏁 Starting autostart plugins...")
     
     j = get_config_json()
-    autostart_plugins = j.get("autostart-plugins", [])
 
     for plugin in registered_plugins:
-        pname = plugin.__name__[plugin.__name__.find(".")+1:]  # get the name after "plugin."
-
-        if hasattr(plugin, "autostart") and pname in autostart_plugins:
+        #if it can be autostarted, then just autostart it
+        if hasattr(plugin, "autostart"):
             try:
                 print(f"🏁 Autostarting plugin {plugin.__name__}...")
                 #run it on different thread to avoid blocking the main thread

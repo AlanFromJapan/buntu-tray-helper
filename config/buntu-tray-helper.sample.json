@@ -1,7 +1,3 @@
 {
-    "autostart-plugins": [
-        "plugin_http_health"
-    ],
-
     "icons_prefix": "logo1"
 }
