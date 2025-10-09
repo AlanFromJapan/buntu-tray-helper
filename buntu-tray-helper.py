@@ -1,6 +1,7 @@
 import os
 import threading
 import time
+import datetime
 import gi
 gi.require_version('AppIndicator3', '0.1')
 gi.require_version('Notify', '0.7')
@@ -36,7 +37,10 @@ def get_icon_path_from_status(status):
         icon_prefix = get_config_json().get("icon-prefix", "demo")
 
     if status == "R":
-        return os.path.join(icon_dir, f"{icon_prefix}-bad.png")
+        if datetime.datetime.now().second % 2 == 0:
+            return os.path.join(icon_dir, f"{icon_prefix}-bad.png")
+        else:
+            return os.path.join(icon_dir, f"{icon_prefix}-bad-alt.png") if os.path.exists(os.path.join(icon_dir, f"{icon_prefix}-bad-alt.png")) else os.path.join(icon_dir, f"{icon_prefix}-bad.png")
     elif status == "A":
         return os.path.join(icon_dir, f"{icon_prefix}-warn.png")
     else:
