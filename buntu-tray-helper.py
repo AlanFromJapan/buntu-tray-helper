@@ -34,7 +34,7 @@ def get_icon_path_from_status(status):
 
     if icon_prefix is None:
         #load just once
-        icon_prefix = get_config_json().get("icon-prefix", "demo")
+        icon_prefix = get_config_json().get("icons_prefix", "demo")
 
     if status == "R":
         if datetime.datetime.now().second % 2 == 0:
