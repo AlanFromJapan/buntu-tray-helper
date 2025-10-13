@@ -11,6 +11,8 @@ from gi.repository import AppIndicator3, Gtk, Notify
 import importlib
 import pkgutil
 import json
+import logging
+from logging.handlers import RotatingFileHandler
 
 
 
@@ -22,6 +24,52 @@ script_dir = os.path.dirname(os.path.abspath(__file__))
 icon_dir = os.path.join(script_dir, "icon")
 
 icon_prefix = None  # will be set later
+
+# --------------------- Logging Setup ---------------------
+
+def setup_logging():
+    """Setup logging with both stdout and rotating file handlers."""
+    global script_dir
+    
+    # Create logs directory if it doesn't exist
+    logs_dir = os.path.join(script_dir, "logs")
+    os.makedirs(logs_dir, exist_ok=True)
+    
+    # Create logger
+    logger = logging.getLogger(APP_ID)
+    logger.setLevel(logging.DEBUG)
+    
+    # Remove any existing handlers to avoid duplicates
+    logger.handlers.clear()
+    
+    # Create formatter
+    formatter = logging.Formatter(
+        '%(asctime)s - %(levelname)s - [%(filename)s:%(lineno)d] - %(message)s',
+        datefmt='%Y-%m-%d %H:%M:%S'
+    )
+    
+    # Console handler (stdout)
+    console_handler = logging.StreamHandler()
+    console_handler.setLevel(logging.INFO)
+    console_handler.setFormatter(formatter)
+    logger.addHandler(console_handler)
+    
+    # Rotating file handler
+    log_file = os.path.join(logs_dir, f"{APP_ID}.log")
+    file_handler = RotatingFileHandler(
+        log_file, 
+        maxBytes=10*1024*1024,  # 10MB
+        backupCount=5
+    )
+    file_handler.setLevel(logging.DEBUG)
+    file_handler.setFormatter(formatter)
+    logger.addHandler(file_handler)
+    
+    return logger
+
+# Initialize logger
+logger = setup_logging()
+
 # --------------------- Misc functions ---------------------
 
 def quit_app(_):
@@ -145,6 +193,7 @@ def thread_icon():
             new_status = "G"
         
         if new_status != current_status:
+            logger.info(f"Overall status changed from {current_status} to {new_status}")
             current_status = new_status
             show_notification(APP_ID +" ~ Status Changed", f"Overall status changed to [{get_status_text_from_status(new_status)}]", new_status)
 
@@ -153,7 +202,7 @@ def thread_icon():
 def thread_autostart_plugins():
     global registered_plugins
     time.sleep(5)  # wait 5 seconds before starting autostart plugins to allow the main app to settle
-    print("🏁 Starting autostart plugins...")
+    logger.info("🏁 Starting autostart plugins...")
     
     j = get_config_json()
 
@@ -161,13 +210,13 @@ def thread_autostart_plugins():
         #if it can be autostarted, then just autostart it
         if hasattr(plugin, "autostart"):
             try:
-                print(f"🏁 Autostarting plugin {plugin.__name__}...")
+                logger.info(f"🏁 Autostarting plugin {plugin.__name__}...")
                 #run it on different thread to avoid blocking the main thread
-                threading.Thread(target=plugin.autostart(), daemon=True).start()
+                threading.Thread(target=plugin.autostart, daemon=True).start()
                 time.sleep(0.1)  # wait a bit before starting the next one
             except Exception as e:
-                print(f"Error autostarting plugin {plugin.__name__}: {e}")
-    print("🏁 Starting autostart plugins... done.")
+                logger.error(f"Error autostarting plugin {plugin.__name__}: {e}")
+    logger.info("🏁 Starting autostart plugins... done.")
 
 
 #--------------------- Main Application ---------------------
@@ -177,6 +226,8 @@ def main():
     global indicator
     global menu
     global registered_plugins
+
+    logger.info(f"Starting {APP_ID} application")
 
     indicator = AppIndicator3.Indicator.new(
         APP_ID,
