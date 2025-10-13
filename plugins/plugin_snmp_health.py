@@ -149,19 +149,20 @@ def background_task(run_once=False):
             for entry in server.get('oids', []):
                 oid = entry["oid"]
                 dyn_check = entry.get("dyn_check", None)
+                descr = entry.get("description", oid)
 
                 result = None
                 try:
-                    print(f"Checking SNMP OID {oid} on {ip}:{port}")
+                    print(f"Checking SNMP OID [{descr}] on {ip}:{port}")
 
                     result = asyncio.run(snmp_get(ip, oid=oid, port=port, community='public', dyn_check=dyn_check))
                 except Exception as e:
-                    print(f"Error checking SNMP OID {oid} on {ip}:{port} - {e}")
+                    print(f"Error checking SNMP OID [{descr}] on {ip}:{port} - {e}")
 
                 if result is None or result["status"] in ["R", "?"]:
                     new_health["status"] = "R"
-                    new_health["failed"].append(f"SNMP check failed for {ip} OID {oid}")
-            
+                    new_health["failed"].append(f"SNMP check failed for {ip} OID [{descr}]")
+
         __health = new_health
 
         if run_once:
