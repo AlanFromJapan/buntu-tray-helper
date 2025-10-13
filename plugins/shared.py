@@ -1,6 +1,10 @@
 
 import json
 import os
+import logging
+
+# Get the logger instance from the main application
+logger = logging.getLogger("buntu_tray_helper")
 
 
 #What an OK status looks like

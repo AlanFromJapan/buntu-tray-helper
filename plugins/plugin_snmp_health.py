@@ -25,7 +25,7 @@ def register(menu, indicator):
     __indicator = indicator
 
 
-    print("Plugin 'plugin_snmp_health' registered")
+    shared.logger.info("Plugin 'plugin_snmp_health' registered")
 
     __menu_item = Gtk.CheckMenuItem(label="SNMP Health Check")
     __menu_item.set_active(True) #check by default
@@ -52,19 +52,19 @@ def do_snmp_health_check(_, autostart=False):
     global __lock
 
     with __lock:
-        print(f"▶ do_snmp_health_check called, autostart={autostart}, thread={__thread}, thread_kill={__thread_kill}")
+        shared.logger.debug(f"▶ do_snmp_health_check called, autostart={autostart}, thread={__thread}, thread_kill={__thread_kill}")
         #I don't know why the get_active() is True when clicked to deactivate, so invert the logic here
         if autostart or __thread is None :
-            print("▶ Starting SNMP health check thread...")
+            shared.logger.info("▶ Starting SNMP health check thread...")
             __thread_kill = False
 
             __thread = threading.Thread(target=background_task, daemon=True)
             __thread.start()
 
             GLib.idle_add(toggle_menu_item_state, True, priority=GLib.PRIORITY_DEFAULT_IDLE)
-            print("▶ Starting SNMP health check thread... done.")
+            shared.logger.info("▶ Starting SNMP health check thread... done.")
         else:
-            print("▶ Stopping SNMP health check thread...")
+            shared.logger.info("▶ Stopping SNMP health check thread...")
             # No direct way to stop thread, but setting daemon=True means it will exit when main program exits
             __thread_kill = True
 
@@ -72,7 +72,7 @@ def do_snmp_health_check(_, autostart=False):
             # this will stop after the next sleep cycle in background_task, hoping user don't restart it before then
 
         #Toggle the check state to reflect the new state
-        print("👉 Toggling SNMP health check menu item state done." + str(__menu_item.get_active()))
+        shared.logger.debug("👉 Toggling SNMP health check menu item state done." + str(__menu_item.get_active()))
 
 
 def toggle_menu_item_state(state: bool):
@@ -97,10 +97,10 @@ async def snmp_get(host: str, oid: str, port: int = 161, community: str = "publi
         errorIndication, errorStatus, errorIndex, varBinds = iterator
 
         if errorIndication:
-            print(errorIndication)
+            shared.logger.error(f"SNMP error indication: {errorIndication}")
 
         elif errorStatus:
-            print(
+            shared.logger.error(
                 "{} at {}".format(
                     errorStatus.prettyPrint(),
                     errorIndex and varBinds[int(errorIndex) - 1][0] or "?",
@@ -108,7 +108,7 @@ async def snmp_get(host: str, oid: str, port: int = 161, community: str = "publi
             )
         else:
             for varBind in varBinds:
-                print(" = ".join([x.prettyPrint() for x in varBind]))
+                shared.logger.debug(" = ".join([x.prettyPrint() for x in varBind]))
 
                 # Dynamic exec of code to check value True/False
                 if dyn_check:
@@ -117,7 +117,7 @@ async def snmp_get(host: str, oid: str, port: int = 161, community: str = "publi
                         local_vars = {'response': None, 'value': varBind[1].prettyPrint()}
                         exec(check, {}, local_vars)
                         response = local_vars['response']
-                        print(f"Dynamic check '{dyn_check}' evaluated to {response}")
+                        shared.logger.debug(f"Dynamic check '{dyn_check}' evaluated to {response}")
                         if not response:
                             health_result["status"] = "R"
                             health_result["failed"].append(f"Check failed: {dyn_check} with value {varBind[1].prettyPrint()}")
@@ -126,7 +126,7 @@ async def snmp_get(host: str, oid: str, port: int = 161, community: str = "publi
                                 health_result["status"] = "G"  # Only set to Green if not already Red
 
                     except ValueError:
-                        print(f"Invalid dynamic check value: {dyn_check}")
+                        shared.logger.error(f"Invalid dynamic check value: {dyn_check}")
                         health_result["status"] = "R"
                         health_result["failed"].append(f"Invalid check: {dyn_check}")
     return health_result
@@ -149,27 +149,28 @@ def background_task(run_once=False):
             for entry in server.get('oids', []):
                 oid = entry["oid"]
                 dyn_check = entry.get("dyn_check", None)
+                descr = entry.get("description", oid)
 
                 result = None
                 try:
-                    print(f"Checking SNMP OID {oid} on {ip}:{port}")
+                    shared.logger.debug(f"Checking SNMP OID [{descr}] on {ip}:{port}")
 
                     result = asyncio.run(snmp_get(ip, oid=oid, port=port, community='public', dyn_check=dyn_check))
                 except Exception as e:
-                    print(f"Error checking SNMP OID {oid} on {ip}:{port} - {e}")
+                    shared.logger.error(f"Error checking SNMP OID [{descr}] on {ip}:{port} - {e}")
 
                 if result is None or result["status"] in ["R", "?"]:
                     new_health["status"] = "R"
-                    new_health["failed"].append(f"SNMP check failed for {ip} OID {oid}")
-            
+                    new_health["failed"].append(f"SNMP check failed for {ip} OID [{descr}]")
+
         __health = new_health
 
         if run_once:
             break
-        print("-"*40)
+        shared.logger.debug("-"*40)
 
         time.sleep(int(config.get("config", {}).get("frequency_in_sec", 180)))  # Wait for the configured frequency before checking again
-    print("🪦 SNMP health check thread exiting.")
+    shared.logger.info("🪦 SNMP health check thread exiting.")
     __thread = None
 
 

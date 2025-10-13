@@ -22,7 +22,7 @@ def register(menu, indicator):
     global __menu_item
     __indicator = indicator
 
-    print("Plugin 'plugin_http_health' registered")
+    shared.logger.info("Plugin 'plugin_http_health' registered")
 
     __menu_item = Gtk.CheckMenuItem(label="HTTP Health Check")
     __menu_item.set_active(True) #check by default
@@ -50,7 +50,7 @@ def do_http_health_check(_, autostart=False):
 
     with __lock:
         if autostart or __menu_item.get_active():
-            print("Starting HTTP health check thread...")
+            shared.logger.info("Starting HTTP health check thread...")
             __thread_kill = False
             
             __thread = threading.Thread(target=background_task, daemon=True)
@@ -58,7 +58,7 @@ def do_http_health_check(_, autostart=False):
 
             __menu_item.set_active(True) # Keep it checked to show it's active
         else:
-            print("Stopping HTTP health check thread...")
+            shared.logger.info("Stopping HTTP health check thread...")
             __menu_item.set_active(False) # Keep it unchecked to show it's inactive
             __thread_kill = True
 
@@ -96,7 +96,7 @@ def http_get(url: str, timeout: int = 30, expected_text: str = None, expected_st
                 health_result["failed"].append(f"HTTP {url} response does not contain expected text: '{expected_text}'")
                 return health_result
                 
-            print(f"HTTP check successful for {url} - Status: {status_code}")
+            shared.logger.info(f"HTTP check successful for {url} - Status: {status_code}")
             
     except urllib.error.HTTPError as e:
         health_result["status"] = "R"
@@ -129,7 +129,7 @@ def background_task(run_once=False):
             expected_text = url_config.get('expected_text')
             expected_status = url_config.get('expected_status', 200)
 
-            print(f"Checking HTTP URL: {url}")
+            shared.logger.debug(f"Checking HTTP URL: {url}")
             result = http_get(url, timeout=timeout, expected_text=expected_text, expected_status=expected_status)
 
             if result["status"] in ["R", "?"]:
@@ -142,4 +142,4 @@ def background_task(run_once=False):
         frequency = config.get("config", {}).get("frequency_in_sec", 300)  # Default 5 minutes
         time.sleep(frequency)
         
-    print("🪦 HTTP health check thread exiting...")
+    shared.logger.info("🪦 HTTP health check thread exiting...")

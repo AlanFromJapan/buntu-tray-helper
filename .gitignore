@@ -217,3 +217,5 @@ __pycache__/
 # Ignore all config files except sample.json files
 /config/*
 !/config/*.sample.json
+# Ignore log files
+/logs/
