@@ -14,7 +14,7 @@ import json
 import logging
 from logging.handlers import RotatingFileHandler
 
-
+import subprocess
 
 # --------------------- Constants ---------------------
 
@@ -73,6 +73,8 @@ logger = setup_logging()
 # --------------------- Misc functions ---------------------
 
 def quit_app(_):
+    logger.info("Quitting application...")
+    logger.info("="*50)
     Gtk.main_quit()
 
 
@@ -102,6 +104,7 @@ def get_status_text_from_status(status):
         return "Warn"
     else:
         return "OK"
+
 
 # Show a notification popup
 def show_notification(title, message, status=None):
@@ -140,6 +143,28 @@ def show_status(_):
         dialog.run()
 
         dialog.destroy()
+
+
+def open_log_file(_):
+    """Open the current log file with system default editor."""
+    logs_dir = os.path.join(script_dir, "logs")
+    log_file = os.path.join(logs_dir, f"{APP_ID}.log")
+    
+    if os.path.exists(log_file):
+        try:
+            # Use xdg-open on Linux to open with default application
+            subprocess.run(['xdg-open', log_file], check=True)
+            logger.info(f"Opened log file: {log_file}")
+        except subprocess.CalledProcessError as e:
+            logger.error(f"Failed to open log file: {e}")
+            show_notification("Error", f"Failed to open log file: {e}", "R")
+        except FileNotFoundError:
+            logger.error("xdg-open not found. Cannot open log file.")
+            show_notification("Error", "xdg-open not found. Cannot open log file.", "R")
+    else:
+        logger.warning(f"Log file does not exist: {log_file}")
+        show_notification("Warning", "Log file does not exist yet.", "A")
+
 
 # Get the config json as a dictionary, create it if it doesn't exist
 def get_config_json():
@@ -258,6 +283,11 @@ def main():
     item_show_status = Gtk.MenuItem(label="Show Status")
     item_show_status.connect("activate", show_status)
     menu.append(item_show_status)
+
+    #Open log file menu item
+    item_open_log = Gtk.MenuItem(label="Open Log File")
+    item_open_log.connect("activate", open_log_file)
+    menu.append(item_open_log)
 
     #show the menu
     menu.show_all()
