@@ -58,8 +58,8 @@ def setup_logging():
     log_file = os.path.join(logs_dir, f"{APP_ID}.log")
     file_handler = RotatingFileHandler(
         log_file, 
-        maxBytes=10*1024*1024,  # 10MB
-        backupCount=5
+        maxBytes=1*1024*1024,  # 1MB
+        backupCount=3
     )
     file_handler.setLevel(logging.DEBUG)
     file_handler.setFormatter(formatter)
