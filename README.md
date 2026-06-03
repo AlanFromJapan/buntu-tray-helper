@@ -25,7 +25,7 @@ A simple Ubuntu app to control different functions (wake my NAS with WOL, monito
 
 ## Get the code
 ```bash
-sudo apt install python3-gi gir1.2-appindicator3-0.1
+sudo apt install python3-gi gir1.2-appindicator3-0.1 libgirepository-2.0-0 libgirepository-2.0-dev libayatana-appindicator3-1 gir1.2-ayatanaappindicator3-0.1 
 
 #need to set access to OS level packages (installed above)
 python3 -m venv . --system-site-packages

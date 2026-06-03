@@ -3,9 +3,9 @@ import threading
 import time
 import datetime
 import gi
-gi.require_version('AppIndicator3', '0.1')
+import pystray
 gi.require_version('Notify', '0.7')
-from gi.repository import AppIndicator3, Gtk, Notify
+from gi.repository import Gtk, Notify
 #from gi.repository import GLib, Gdk
 
 import importlib
@@ -75,7 +75,7 @@ logger = setup_logging()
 def quit_app(_):
     logger.info("Quitting application...")
     logger.info("="*50)
-    Gtk.main_quit()
+    exit(0)
 
 
 def get_icon_path_from_status(status):
@@ -190,7 +190,6 @@ def load_plugins():
         module = importlib.import_module(os.path.join("plugins", name).replace(os.sep, "."))
         if hasattr(module, "register"):
             try:
-                module.register(menu, indicator)  # call convention
                 plugins.append(module)
             except Exception as e:
                 print(f"Error registering plugin {name}: {e}")
@@ -208,13 +207,13 @@ def thread_icon():
         new_status = "G"
         statuses = [plugin.get_status()["status"] for plugin in registered_plugins if hasattr(plugin, "get_status")]
         if "R" in statuses:
-            indicator.set_icon_full(get_icon_path_from_status("R"), get_status_text_from_status("R"))
+            #indicator.set_icon_full(get_icon_path_from_status("R"), get_status_text_from_status("R"))
             new_status = "R"
         elif "A" in statuses:
-            indicator.set_icon_full(get_icon_path_from_status("A"), get_status_text_from_status("A"))
+            #indicator.set_icon_full(get_icon_path_from_status("A"), get_status_text_from_status("A"))
             new_status = "A"
         else:
-            indicator.set_icon_full(get_icon_path_from_status("G"), get_status_text_from_status("G"))
+            #indicator.set_icon_full(get_icon_path_from_status("G"), get_status_text_from_status("G"))
             new_status = "G"
         
         if new_status != current_status:
@@ -245,62 +244,52 @@ def thread_autostart_plugins():
 
 
 #--------------------- Main Application ---------------------
-indicator = None
 menu = None
 def main():
-    global indicator
     global menu
     global registered_plugins
 
     logger.info(f"Starting {APP_ID} application")
 
-    indicator = AppIndicator3.Indicator.new(
-        APP_ID,
-        "system-run",  # an icon name from system theme, or absolute path to .png/.svg
-        AppIndicator3.IndicatorCategory.APPLICATION_STATUS
-    )
+    from PIL import Image
 
-    indicator.set_status(AppIndicator3.IndicatorStatus.ACTIVE)
-
-    # Build a simple menu
-    menu = Gtk.Menu()
+    menus = []
 
     #Quit menu on top
-    item_quit = Gtk.MenuItem(label="Quit")
-    item_quit.connect("activate", quit_app)
-    menu.append(item_quit)
+    menus.append(pystray.MenuItem("Quit", quit_app))
 
     #separator BEFORE the plugins
-    menu.append(Gtk.SeparatorMenuItem())    
+    menus.append(pystray.Menu.SEPARATOR)
 
-    #get the plugins folder
+    #get the plugins list from the plugins/ folder (NON INITIALIZED YET, just the modules)
     registered_plugins = load_plugins()
+    for plugin in registered_plugins:
+        print("TODO LOAD PLUGIN: ", plugin.__name__)
+        pass
 
     #separator AFTER the plugins
-    menu.append(Gtk.SeparatorMenuItem())    
+    menus.append(pystray.Menu.SEPARATOR)    
 
     #Show the status menu item
-    item_show_status = Gtk.MenuItem(label="Show Status")
-    item_show_status.connect("activate", show_status)
-    menu.append(item_show_status)
+    menus.append(pystray.MenuItem("Show Status", show_status))
 
     #Open log file menu item
-    item_open_log = Gtk.MenuItem(label="Open Log File")
-    item_open_log.connect("activate", open_log_file)
-    menu.append(item_open_log)
+    menus.append(pystray.MenuItem("Open Log File", open_log_file))
 
-    #show the menu
-    menu.show_all()
-    indicator.set_menu(menu)
+    tray_icon = pystray.Icon("test", Image.open(os.path.join(icon_dir, "demo-ok.png")))
+    tray_icon.menu = pystray.Menu(
+        *menus
+    )
 
-    # Start the icon update thread as a daemon so it exits when the main program does
-    threading.Thread(target=thread_icon, daemon=True).start()
+    # # Start the icon update thread as a daemon so it exits when the main program does
+    # threading.Thread(target=thread_icon, daemon=True).start()
 
-    # Start the autostart plugins thread as a daemon so it exits when the main program does
-    threading.Thread(target=thread_autostart_plugins, daemon=True).start()
+    # # Start the autostart plugins thread as a daemon so it exits when the main program does
+    # threading.Thread(target=thread_autostart_plugins, daemon=True).start()
 
-    Gtk.main()
-
+    tray_icon.run()
+    #Gtk.main()
+    
 
 if __name__ == "__main__":
     #Marked as deprecated in newer versions of PyGObject, but still needed for compatibility?
