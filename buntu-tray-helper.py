@@ -7,6 +7,7 @@ import pystray
 gi.require_version('Notify', '0.7')
 from gi.repository import Gtk, Notify
 #from gi.repository import GLib, Gdk
+from PIL import Image
 
 import importlib
 import pkgutil
@@ -85,7 +86,7 @@ def get_icon_path_from_status(status):
     if icon_prefix is None:
         #load just once
         icon_prefix = get_config_json().get("icons_prefix", "demo")
-
+    
     if status == "R":
         if datetime.datetime.now().second % 2 == 0:
             return os.path.join(icon_dir, f"{icon_prefix}-bad.png")
@@ -180,7 +181,7 @@ def get_config_json():
 # --------------------- Plugin Management ---------------------
 registered_plugins = []
 def load_plugins():
-    global script_dir
+    global script_dir, tray_icon, menus
     plugins = []
 
     for _, name, _ in pkgutil.iter_modules([os.path.join(script_dir, "plugins")]):
@@ -188,8 +189,10 @@ def load_plugins():
             continue
         
         module = importlib.import_module(os.path.join("plugins", name).replace(os.sep, "."))
-        if hasattr(module, "register"):
+        #TODO REMOVE ME! LIMITS TO DEBUG IN PROGRESS MODULE
+        if hasattr(module, "register") and "http" in name:
             try:
+                module.register(menus, tray_icon)
                 plugins.append(module)
             except Exception as e:
                 print(f"Error registering plugin {name}: {e}")
@@ -199,7 +202,7 @@ def load_plugins():
 
 #Check the status of all plugins every second and update the icon accordingly
 def thread_icon():
-    global icon_dir
+    global icon_dir, tray_icon, menus
     global APP_ID
     current_status = "G"
     while True:
@@ -207,17 +210,22 @@ def thread_icon():
         new_status = "G"
         statuses = [plugin.get_status()["status"] for plugin in registered_plugins if hasattr(plugin, "get_status")]
         if "R" in statuses:
-            #indicator.set_icon_full(get_icon_path_from_status("R"), get_status_text_from_status("R"))
             new_status = "R"
         elif "A" in statuses:
-            #indicator.set_icon_full(get_icon_path_from_status("A"), get_status_text_from_status("A"))
             new_status = "A"
         else:
-            #indicator.set_icon_full(get_icon_path_from_status("G"), get_status_text_from_status("G"))
             new_status = "G"
+
         
         if new_status != current_status:
             logger.info(f"Overall status changed from {current_status} to {new_status}")
+
+            #update the icon
+            if tray_icon is not None:
+                tray_icon.icon = Image.open(get_icon_path_from_status(new_status))
+                #tray_icon.title = f"Status: {get_status_text_from_status(new_status)}"
+                tray_icon.update_menu()
+
             current_status = new_status
             show_notification(APP_ID +" ~ Status Changed", f"Overall status changed to [{get_status_text_from_status(new_status)}]", new_status)
 
@@ -244,14 +252,14 @@ def thread_autostart_plugins():
 
 
 #--------------------- Main Application ---------------------
-menu = None
+menus = None
+tray_icon = None
 def main():
-    global menu
+    global menus, tray_icon
     global registered_plugins
 
     logger.info(f"Starting {APP_ID} application")
 
-    from PIL import Image
 
     menus = []
 
@@ -262,10 +270,10 @@ def main():
     menus.append(pystray.Menu.SEPARATOR)
 
     #get the plugins list from the plugins/ folder (NON INITIALIZED YET, just the modules)
-    registered_plugins = load_plugins()
-    for plugin in registered_plugins:
-        print("TODO LOAD PLUGIN: ", plugin.__name__)
-        pass
+    # registered_plugins = load_plugins()
+    # for plugin in registered_plugins:
+    #     print("TODO LOAD PLUGIN: ", plugin.__name__)
+    #     pass
 
     #separator AFTER the plugins
     menus.append(pystray.Menu.SEPARATOR)    
@@ -282,7 +290,7 @@ def main():
     )
 
     # # Start the icon update thread as a daemon so it exits when the main program does
-    # threading.Thread(target=thread_icon, daemon=True).start()
+    threading.Thread(target=thread_icon, daemon=True).start()
 
     # # Start the autostart plugins thread as a daemon so it exits when the main program does
     # threading.Thread(target=thread_autostart_plugins, daemon=True).start()
