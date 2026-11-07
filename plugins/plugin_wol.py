@@ -18,8 +18,14 @@ def register(menu, indicator):
     __indicator = indicator
     shared.logger.info("Plugin 'plugin_wol' registered")
 
-    __menu_item = pystray.MenuItem("Wake-On-LAN (WOL)", send_wol, checked=lambda item: False)
+    __menu_item = pystray.MenuItem("Wake-On-LAN (WOL)", send_wol, checked=is_checked)
     menu.append(__menu_item)
+
+
+#return the visual checked state of the menu item
+def is_checked(item):
+    global __running
+    return __running
 
 
 # This function is called by the main application to get the current status of the plugin (RAG).
@@ -40,7 +46,6 @@ def send_wol(_, autostart=False):
         if (autostart or not __running) and not __thread_kill:
             #NOT running, NOT marked for kill: Start it
             
-            #__menu_item.checked = True # Keep it checked to show it's active
             __running = True
 
             shared.logger.info("Starting WOL sending thread...")
@@ -49,7 +54,6 @@ def send_wol(_, autostart=False):
             __thread.start()
         else:
             shared.logger.info("Stopping WOL sending thread...")
-            #__menu_item.checked = False # Keep it unchecked to show it's inactive
             __thread_kill = True
             __running = False
             # this will stop after the next sleep cycle in background_task, hoping user don't restart it before then
