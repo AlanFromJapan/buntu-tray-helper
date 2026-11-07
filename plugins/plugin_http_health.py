@@ -1,4 +1,3 @@
-from gi.repository import Gtk
 import os
 import threading
 import time
@@ -7,6 +6,7 @@ import urllib.request
 import urllib.error
 import ssl
 import plugins.shared as shared
+import pystray
 
 
 __indicator = None
@@ -14,6 +14,7 @@ __thread = None
 __thread_kill = False
 __health = shared.default_ok_status()
 __menu_item = None
+__running = False
 
 
 #The register function is required for the plugin system to recognize this file as a plugin.
@@ -24,10 +25,14 @@ def register(menu, indicator):
 
     shared.logger.info("Plugin 'plugin_http_health' registered")
 
-    __menu_item = Gtk.CheckMenuItem(label="HTTP Health Check")
-    __menu_item.set_active(True) #check by default
-    __menu_item.connect("activate", do_http_health_check)
+    __menu_item = pystray.MenuItem("HTTP Health Check", do_http_health_check, checked=is_checked)
     menu.append(__menu_item)
+
+
+#return the visual checked state of the menu item
+def is_checked(item):
+    global __thread
+    return __thread is not None and __thread.is_alive()
 
 
 #Will be called if the module is set to autostart in the config
@@ -47,20 +52,20 @@ def do_http_health_check(_, autostart=False):
     global __thread
     global __thread_kill
     global __lock
+    global __running
 
     with __lock:
-        if autostart or __menu_item.get_active():
+        if (not __running and not __thread_kill) or (not __running and autostart):
+            #NOT running, NOT marked for kill: Start it
+
             shared.logger.info("Starting HTTP health check thread...")
-            __thread_kill = False
-            
             __thread = threading.Thread(target=background_task, daemon=True)
             __thread.start()
-
-            __menu_item.set_active(True) # Keep it checked to show it's active
         else:
             shared.logger.info("Stopping HTTP health check thread...")
-            __menu_item.set_active(False) # Keep it unchecked to show it's inactive
             __thread_kill = True
+            __running = False #needed to remember that the function is disabled while the thread my be waiting to terminate
+            # this will stop after the next sleep cycle in background_task, hoping user don't restart it before then
 
 
 def http_get(url: str, timeout: int = 30, expected_text: str = None, expected_status: int = 200):
@@ -114,7 +119,15 @@ def http_get(url: str, timeout: int = 30, expected_text: str = None, expected_st
 def background_task(run_once=False):
     global __health
     global __thread_kill
+    global __running
 
+    if __thread_kill or __running:
+        return
+
+    #set
+    __thread_kill = False
+    __running = True
+    
     while not __thread_kill:
         config = shared.get_plugin_config('http_health.json')
 
@@ -141,5 +154,8 @@ def background_task(run_once=False):
             
         frequency = config.get("config", {}).get("frequency_in_sec", 300)  # Default 5 minutes
         time.sleep(frequency)
-        
+
+    #reset
+    __running = False
+    __thread_kill = False
     shared.logger.info("🪦 HTTP health check thread exiting...")
