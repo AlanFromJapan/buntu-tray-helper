@@ -43,26 +43,30 @@ def send_wol(_, autostart=False):
     global __running
     
     with __lock:
-        if (autostart or not __running) and not __thread_kill:
+        if (not __running and not __thread_kill) or (not __running and autostart):
             #NOT running, NOT marked for kill: Start it
             
-            __running = True
-
             shared.logger.info("Starting WOL sending thread...")
-            __thread_kill = False
             __thread = threading.Thread(target=background_task, daemon=True)
             __thread.start()
         else:
             shared.logger.info("Stopping WOL sending thread...")
             __thread_kill = True
-            __running = False
-            # this will stop after the next sleep cycle in background_task, hoping user don't restart it before then
+            __running = False #needed to remember that the function is disabled while the thread my be waiting to terminate
 
 
 def background_task():
     global __thread_kill
     global __running
-    
+
+    if __thread_kill or __running:
+        return
+
+    #set
+    __thread_kill = False
+    __running = True
+
+    #start background task loop
     while not __thread_kill:
         config = shared.get_plugin_config('wol.json')
         for device in config.get('devices', []):
@@ -85,6 +89,7 @@ def background_task():
 
         frequency_sec = int(config.get('settings', {}).get('frequency_sec', 180))
         time.sleep(frequency_sec)
+
     #reset    
     __thread_kill = False
     __running = False
