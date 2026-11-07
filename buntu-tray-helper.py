@@ -184,13 +184,15 @@ def load_plugins():
     global script_dir, tray_icon, menus
     plugins = []
 
+    ignore_patterns = get_config_json().get("plugins_ignore_keywords", ["_TEST_"])
+
     for _, name, _ in pkgutil.iter_modules([os.path.join(script_dir, "plugins")]):
         if not  name.startswith("plugin_"):
             continue
         
         module = importlib.import_module(os.path.join("plugins", name).replace(os.sep, "."))
         #TODO REMOVE ME! LIMITS TO DEBUG IN PROGRESS MODULE
-        if hasattr(module, "register") and "http" in name:
+        if hasattr(module, "register") and not any(ignore_pattern in name for ignore_pattern in ignore_patterns):
             try:
                 module.register(menus, tray_icon)
                 plugins.append(module)
@@ -270,7 +272,7 @@ def main():
     menus.append(pystray.Menu.SEPARATOR)
 
     #get the plugins list from the plugins/ folder (NON INITIALIZED YET, just the modules)
-    # registered_plugins = load_plugins()
+    registered_plugins = load_plugins()
     # for plugin in registered_plugins:
     #     print("TODO LOAD PLUGIN: ", plugin.__name__)
     #     pass
