@@ -191,7 +191,7 @@ def load_plugins():
             continue
         
         module = importlib.import_module(os.path.join("plugins", name).replace(os.sep, "."))
-        #TODO REMOVE ME! LIMITS TO DEBUG IN PROGRESS MODULE
+        #filter out modules to process based on ignore patterns
         if hasattr(module, "register") and not any(ignore_pattern in name for ignore_pattern in ignore_patterns):
             try:
                 module.register(menus, tray_icon)

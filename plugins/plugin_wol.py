@@ -61,6 +61,8 @@ def send_wol(_, autostart=False):
 
 def background_task():
     global __thread_kill
+    global __running
+    
     while not __thread_kill:
         config = shared.get_plugin_config('wol.json')
         for device in config.get('devices', []):
@@ -83,4 +85,7 @@ def background_task():
 
         frequency_sec = int(config.get('settings', {}).get('frequency_sec', 180))
         time.sleep(frequency_sec)
+    #reset    
+    __thread_kill = False
+    __running = False
     shared.logger.info("🪦 WOL sending thread exiting...")
