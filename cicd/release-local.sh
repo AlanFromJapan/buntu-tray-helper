@@ -10,5 +10,8 @@ rsync -av --exclude='.git' --exclude='cicd' --exclude='config' --exclude='logs' 
 mkdir -p ~/.config/autostart
 cp ~/Git/buntu-tray-helper/cicd/buntu-tray-helper.desktop ~/.config/autostart/
 
+#desktop launcher
+cp ~/Git/buntu-tray-helper/cicd/buntu-tray-helper.desktop ~/Desktop
+
 #that's it!
 echo "Local release prepared in ~/AppImage/buntu-tray-helper"
