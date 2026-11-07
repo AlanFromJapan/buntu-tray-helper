@@ -1,14 +1,15 @@
-from gi.repository import Gtk
 import socket
 import threading
 import time
 import plugins.shared as shared
+import pystray
 
 
 __indicator = None
 __thread = None
 __thread_kill = False
 __menu_item = None
+__running = False
 
 #The register function is required for the plugin system to recognize this file as a plugin.
 def register(menu, indicator):
@@ -17,8 +18,7 @@ def register(menu, indicator):
     __indicator = indicator
     shared.logger.info("Plugin 'plugin_wol' registered")
 
-    __menu_item = Gtk.CheckMenuItem(label="Wake-On-LAN (WOL)")
-    __menu_item.connect("activate", send_wol)
+    __menu_item = pystray.MenuItem("Wake-On-LAN (WOL)", send_wol, checked=lambda item: False)
     menu.append(__menu_item)
 
 
@@ -34,10 +34,14 @@ def send_wol(_, autostart=False):
     global __thread
     global __thread_kill
     global __lock
+    global __running
     
     with __lock:
-        if autostart or __menu_item.get_active():
-            __menu_item.set_active(True) # Keep it checked to show it's active
+        if (autostart or not __running) and not __thread_kill:
+            #NOT running, NOT marked for kill: Start it
+            
+            #__menu_item.checked = True # Keep it checked to show it's active
+            __running = True
 
             shared.logger.info("Starting WOL sending thread...")
             __thread_kill = False
@@ -45,8 +49,9 @@ def send_wol(_, autostart=False):
             __thread.start()
         else:
             shared.logger.info("Stopping WOL sending thread...")
-            __menu_item.set_active(False) # Keep it unchecked to show it's inactive
+            #__menu_item.checked = False # Keep it unchecked to show it's inactive
             __thread_kill = True
+            __running = False
             # this will stop after the next sleep cycle in background_task, hoping user don't restart it before then
 
 

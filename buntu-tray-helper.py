@@ -190,7 +190,7 @@ def load_plugins():
         
         module = importlib.import_module(os.path.join("plugins", name).replace(os.sep, "."))
         #TODO REMOVE ME! LIMITS TO DEBUG IN PROGRESS MODULE
-        if hasattr(module, "register") and "http" in name:
+        if hasattr(module, "register") and "wol" in name:
             try:
                 module.register(menus, tray_icon)
                 plugins.append(module)
@@ -270,7 +270,7 @@ def main():
     menus.append(pystray.Menu.SEPARATOR)
 
     #get the plugins list from the plugins/ folder (NON INITIALIZED YET, just the modules)
-    # registered_plugins = load_plugins()
+    registered_plugins = load_plugins()
     # for plugin in registered_plugins:
     #     print("TODO LOAD PLUGIN: ", plugin.__name__)
     #     pass
